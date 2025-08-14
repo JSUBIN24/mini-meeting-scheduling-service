@@ -16,6 +16,7 @@ public interface SlotRepository extends JpaRepository<Slot,Long> {
     List<Slot> findOverlapping(Calendar calendar, OffsetDateTime from, OffsetDateTime to);
 
     Page<Slot> findByCalendarAndStartTimeBetween(Calendar calendar, OffsetDateTime from, OffsetDateTime to, Pageable pageable);
+    List<Slot> findByCalendarAndStartTimeBetween(Calendar calendar, OffsetDateTime from, OffsetDateTime to);
 
     Page<Slot> findByCalendarAndStartTimeBetweenAndStatus(Calendar calendar, OffsetDateTime from, OffsetDateTime to, SlotStatus status, Pageable pageable);
 
