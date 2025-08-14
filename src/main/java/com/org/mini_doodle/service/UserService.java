@@ -45,4 +45,9 @@ public class UserService {
                 .name(name)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public Calendar getPersonalCalendar(Long userId) {
+        return calendarRepository.findByOwnerId(userId).orElseThrow();
+    }
 }
