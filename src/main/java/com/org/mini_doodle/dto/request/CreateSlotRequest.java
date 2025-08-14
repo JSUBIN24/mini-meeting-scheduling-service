@@ -1,4 +1,4 @@
-package com.org.mini_doodle.dto;
+package com.org.mini_doodle.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

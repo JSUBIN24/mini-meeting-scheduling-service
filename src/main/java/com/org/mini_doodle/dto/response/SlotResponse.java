@@ -1,4 +1,4 @@
-package com.org.mini_doodle.dto;
+package com.org.mini_doodle.dto.response;
 
 
 

@@ -3,7 +3,7 @@ package com.org.mini_doodle.service;
 import com.org.mini_doodle.domain.Calendar;
 import com.org.mini_doodle.domain.Slot;
 import com.org.mini_doodle.domain.SlotStatus;
-import com.org.mini_doodle.dto.CreateSlotRequest;
+import com.org.mini_doodle.dto.request.CreateSlotRequest;
 import com.org.mini_doodle.exception.NotFoundException;
 import com.org.mini_doodle.exception.OverlapConflictException;
 import com.org.mini_doodle.repository.SlotRepository;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 public class SlotService {
@@ -33,52 +34,86 @@ public class SlotService {
 
     @Transactional
     public Slot createSlotForUser(Long userId, CreateSlotRequest req) {
-        Calendar cal = userService.getPersonalCalendar(userId);
-        var start = req.startTime();
-        var end = start.plusMinutes(req.durationMinutes());
-        ValidationUtil.ensureDurationWithin(req.durationMinutes(), MIN_DURATION_MIN, MAX_DURATION_MIN);
-        ValidationUtil.ensureStartBeforeEnd(start, end);
-        var overlaps = slotRepository.findOverlapping(cal, start, end);
-        if (!overlaps.isEmpty()) throw new OverlapConflictException("Overlapping slot exists");
-        var s = Slot.builder().calendar(cal).startTime(start).endTime(end).status(SlotStatus.FREE).build();
-        return slotRepository.save(s);
+        Calendar calendar = userService.getPersonalCalendar(userId);
+        OffsetDateTime endTime = req.startTime().plusMinutes(req.durationMinutes());
+
+        validateSlotCreation(req.startTime(),endTime, req.durationMinutes());
+        ensureNoOverlaps(calendar,req.startTime(),endTime,null);
+
+        Slot slot = buildSlot(calendar,req.startTime(),endTime);
+        return slotRepository.save(slot);
     }
 
     @Transactional(readOnly = true)
     public Page<Slot> querySlotsForUser(Long userId, OffsetDateTime from, OffsetDateTime to, SlotStatus status, Pageable pageable) {
-        Calendar cal = userService.getPersonalCalendar(userId);
+        Calendar calendar = userService.getPersonalCalendar(userId);
         ValidationUtil.ensureStartBeforeEnd(from, to);
-        if (status == null) return slotRepository.findByCalendarAndStartTimeBetween(cal, from, to, pageable);
-        return slotRepository.findByCalendarAndStartTimeBetweenAndStatus(cal, from, to, status, pageable);
+
+        if (status == null) return slotRepository.findByCalendarAndStartTimeBetween(calendar, from, to, pageable);
+        return slotRepository.findByCalendarAndStartTimeBetweenAndStatus(calendar, from, to, status, pageable);
     }
 
     @Transactional
     public Slot modifyTimes(Long userId, Long slotId, OffsetDateTime newStart, OffsetDateTime newEnd) {
-        var s = slotRepository.findById(slotId).orElseThrow(() -> new NotFoundException("Slot not found"));
-        Ownership.ensureSlotBelongs(userId, s);
+        Slot slot = findSlotAndEnsureOwnership(userId, slotId);
+
         ValidationUtil.ensureStartBeforeEnd(newStart, newEnd);
-        var overlaps = slotRepository.findOverlapping(s.getCalendar(), newStart, newEnd);
-        overlaps.removeIf(o -> o.getId().equals(slotId));
-        if (!overlaps.isEmpty()) throw new OverlapConflictException("Overlapping slot exists");
-        s.setStartTime(newStart);
-        s.setEndTime(newEnd);
-        return slotRepository.save(s);
+        ensureNoOverlaps(slot.getCalendar(), newStart, newEnd, slotId);
+
+        slot.setStartTime(newStart);
+        slot.setEndTime(newEnd);
+        return slotRepository.save(slot);
     }
 
     @Transactional
     public Slot markStatus(Long userId, Long slotId, SlotStatus status) {
-        var s = slotRepository.findById(slotId).orElseThrow(() -> new NotFoundException("Slot not found"));
-        Ownership.ensureSlotBelongs(userId, s);
-        if (status == SlotStatus.FREE && s.getMeeting() != null)
+        Slot slot = findSlotAndEnsureOwnership(userId,slotId);
+
+        if (status == SlotStatus.FREE && slot.getMeeting() != null){
             throw new OverlapConflictException("Cannot mark FREE: slot has a meeting");
-        s.setStatus(status);
-        return slotRepository.save(s);
+        }
+
+        slot.setStatus(status);
+        return slotRepository.save(slot);
     }
 
     @Transactional
     public void deleteSlot(Long userId, Long slotId) {
-        var s = slotRepository.findById(slotId).orElseThrow(() -> new NotFoundException("Slot not found"));
-        Ownership.ensureSlotBelongs(userId, s);
+        findSlotAndEnsureOwnership(userId,slotId);
         slotRepository.deleteById(slotId);
     }
+
+    private void validateSlotCreation(OffsetDateTime startTime, OffsetDateTime endTime, long durationMinutes) {
+        ValidationUtil.ensureDurationWithin(durationMinutes, MIN_DURATION_MIN, MAX_DURATION_MIN);
+        ValidationUtil.ensureStartBeforeEnd(startTime, endTime);
+    }
+
+    private void ensureNoOverlaps(Calendar calendar, OffsetDateTime start, OffsetDateTime end, Long excludeSlotId) {
+        List<Slot> overlaps = slotRepository.findOverlapping(calendar, start, end);
+
+        if (excludeSlotId != null) {
+            overlaps.removeIf(slot -> slot.getId().equals(excludeSlotId));
+        }
+
+        if (!overlaps.isEmpty()) {
+            throw new OverlapConflictException("Overlapping slot exists");
+        }
+    }
+
+    private Slot buildSlot(Calendar calendar, OffsetDateTime startTime, OffsetDateTime endTime) {
+        return Slot.builder()
+                .calendar(calendar)
+                .startTime(startTime)
+                .endTime(endTime)
+                .status(SlotStatus.FREE)
+                .build();
+    }
+
+    private Slot findSlotAndEnsureOwnership(Long userId, Long slotId) {
+        Slot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new NotFoundException("Slot not found"));
+        Ownership.ensureSlotBelongs(userId, slot);
+        return slot;
+    }
+
 }
