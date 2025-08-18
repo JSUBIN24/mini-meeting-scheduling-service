@@ -1,6 +1,7 @@
 package com.org.mini_doodle.controller;
 
 import com.org.mini_doodle.domain.User;
+import com.org.mini_doodle.dto.response.UserResponse;
 import com.org.mini_doodle.repository.UserRepository;
 import com.org.mini_doodle.service.UserService;
 import jakarta.validation.constraints.Email;
@@ -40,7 +41,10 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> getAllUser() {
-        return userRepository.findAll();
+    public List<UserResponse> getAllUser() {
+        return userRepository.findAll()
+                .stream()
+                .map(UserResponse::from)
+                .toList();
     }
 }
