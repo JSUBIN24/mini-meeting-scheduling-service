@@ -8,6 +8,7 @@ import com.org.mini_doodle.dto.response.FreeBusyResponse;
 import com.org.mini_doodle.exception.NotFoundException;
 import com.org.mini_doodle.repository.CalendarRepository;
 import com.org.mini_doodle.repository.SlotRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+@Slf4j
 @Service
 public class AvailabilityService {
 
@@ -30,6 +32,7 @@ public class AvailabilityService {
 
     @Transactional(readOnly = true)
     public FreeBusyResponse freeBusyForUser(Long userId, OffsetDateTime from, OffsetDateTime to) {
+        log.info("Calculating availability for user={} between {} and {}", userId, from, to);
         Calendar calendar = calendarRepository.findByOwnerId(userId)
                 .orElseThrow(() -> new NotFoundException("Calendar not found for user: " + userId));
 
@@ -39,6 +42,7 @@ public class AvailabilityService {
         List<TimeInterval> mergedBusyIntervals = mergeOverlappingIntervals(busyIntervals);
         List<TimeInterval> freeIntervals = calculateFreeIntervals(from, to, mergedBusyIntervals);
 
+        log.debug("Busy intervals={} Free intervals={}", busyIntervals, freeIntervals);
         return new FreeBusyResponse(mergedBusyIntervals, freeIntervals);
     }
 
@@ -55,7 +59,6 @@ public class AvailabilityService {
             result.add(new TimeInterval(cursor, end));
             cursor = cursor.plus(bucket);
         }
-
         return result;
     }
 

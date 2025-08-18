@@ -9,6 +9,7 @@ import com.org.mini_doodle.exception.OverlapConflictException;
 import com.org.mini_doodle.repository.SlotRepository;
 import com.org.mini_doodle.util.Ownership;
 import com.org.mini_doodle.util.ValidationUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 public class SlotService {
 
@@ -34,6 +36,7 @@ public class SlotService {
 
     @Transactional
     public Slot createSlotForUser(Long userId, CreateSlotRequest req) {
+        log.debug("User {} requested slot creation from {} for {} minutes", userId, req.startTime(), req.durationMinutes());
         Calendar calendar = userService.getPersonalCalendar(userId);
         OffsetDateTime endTime = req.startTime().plusMinutes(req.durationMinutes());
 
@@ -41,6 +44,7 @@ public class SlotService {
         ensureNoOverlaps(calendar,req.startTime(),endTime,null);
 
         Slot slot = buildSlot(calendar,req.startTime(),endTime);
+        log.info("Created slot id={} for user={}", slot.getId(), userId);
         return slotRepository.save(slot);
     }
 
@@ -74,12 +78,14 @@ public class SlotService {
         }
 
         slot.setStatus(status);
+        log.info("Updated slot id={} for user={}", slotId, userId);
         return slotRepository.save(slot);
     }
 
     @Transactional
     public void deleteSlot(Long userId, Long slotId) {
         findSlotAndEnsureOwnership(userId,slotId);
+        log.info("Deleted slot id={} for user={}", slotId, userId);
         slotRepository.deleteById(slotId);
     }
 

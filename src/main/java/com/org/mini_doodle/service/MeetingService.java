@@ -9,6 +9,7 @@ import com.org.mini_doodle.repository.ParticipantRepository;
 import com.org.mini_doodle.repository.SlotRepository;
 import com.org.mini_doodle.repository.UserRepository;
 import com.org.mini_doodle.util.Ownership;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 public class MeetingService {
 
@@ -37,6 +39,7 @@ public class MeetingService {
         Meeting meeting = createMeeting(req, slot);
         addParticipants(meeting, req.participantUserIds());
         markSlotAsBusy(slot, meeting);
+        log.info("Booking meeting for slot id={} by user={}", req.slotId(), userId);
         return meeting;
     }
 

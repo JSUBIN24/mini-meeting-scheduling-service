@@ -3,6 +3,7 @@ package com.org.mini_doodle.controller;
 import com.org.mini_doodle.domain.TimeInterval;
 import com.org.mini_doodle.dto.response.FreeBusyResponse;
 import com.org.mini_doodle.service.AvailabilityService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users/{userId}/availability")
 public class AvailabilityController {
@@ -28,6 +29,7 @@ public class AvailabilityController {
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
                                       @RequestParam(required = false) String granularity) {
+        log.info("Fetching free/busy availability for user={} from {} to {}, granularity={}", userId, from, to, granularity);
         if (granularity == null) {
             FreeBusyResponse response = availabilityService.freeBusyForUser(userId, from, to);
             return ResponseEntity.ok(response);

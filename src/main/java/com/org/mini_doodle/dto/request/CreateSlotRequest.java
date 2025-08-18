@@ -5,5 +5,5 @@ import jakarta.validation.constraints.Positive;
 
 import java.time.OffsetDateTime;
 
-public record CreateSlotRequest(@NotNull OffsetDateTime startTime, @Positive int durationMinutes) {
+public record CreateSlotRequest(@NotNull(message = "Start time is required") OffsetDateTime startTime, @NotNull(message = "DurationMinutes is required" ) @Positive int durationMinutes) {
 }

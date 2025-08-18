@@ -5,14 +5,17 @@ import com.org.mini_doodle.repository.UserRepository;
 import com.org.mini_doodle.service.UserService;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
+@Validated
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -27,8 +30,17 @@ public class UserController {
 
 
     @PostMapping
-    public ResponseEntity<User>create(@RequestParam @Email String email, @RequestParam @NotBlank String name){
+    public ResponseEntity<User>create(@RequestParam @Email(message = "Email must be in valid format") String email,
+                                      @RequestParam @NotBlank(message = "Name is mandatory")
+                                      @Pattern(regexp = "^[A-Za-z ]+$", message = "Name must contain only letters and spaces")
+                                      String name){
+        log.info("Creating new user with email={}", email);
         User user = userService.createUser(email,name);
-        return ResponseEntity.created(URI.create("User got created for the ID: " + user.getId())).body(user);
+        return ResponseEntity.created(URI.create("/api/users/" + user.getId())).body(user);
+    }
+
+    @GetMapping
+    public List<User> getAllUser() {
+        return userRepository.findAll();
     }
 }
